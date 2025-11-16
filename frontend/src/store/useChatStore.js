@@ -61,12 +61,15 @@ const decryptMessageForConversation = (message, otherUserPublicKey, secretKey) =
   return formattedMessage;
 };
 
+const desktopMediaQuery = typeof window !== "undefined" ? window.innerWidth >= 1024 : true;
+
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
+  isSidebarOpen: desktopMediaQuery,
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -301,4 +304,9 @@ export const useChatStore = create((set, get) => ({
     get().resetUnreadCount(selectedUser._id);
     set({ selectedUser });
   },
+
+  setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  closeSidebar: () => set({ isSidebarOpen: false }),
+  openSidebar: () => set({ isSidebarOpen: true }),
 }));

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
@@ -16,6 +16,8 @@ const Sidebar = () => {
     addContact,
     removeContact,
     handleConversationPurged,
+    isSidebarOpen,
+    setSidebarOpen,
   } = useChatStore();
 
   const { onlineUsers, socket } = useAuthStore();
@@ -29,6 +31,16 @@ const Sidebar = () => {
   useEffect(() => {
     getUsers();
   }, [getUsers]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setSidebarOpen]);
 
   useEffect(() => {
     if (!socket) return;
@@ -55,56 +67,32 @@ const Sidebar = () => {
     }
   };
 
-  const filteredUsers = showOnlineOnly
-    ? users.filter((user) => onlineUsers.includes(user._id))
-    : users;
+  const filteredUsers = useMemo(() => {
+    return showOnlineOnly ? users.filter((user) => onlineUsers.includes(user._id)) : users;
+  }, [showOnlineOnly, users, onlineUsers]);
 
-  if (isUsersLoading) return <SidebarSkeleton />;
+  const handleUserSelect = (user) => {
+    setSelectedUser(user);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
-  return (
-    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
-      <div className="border-b border-base-300 w-full p-5">
-        <div className="flex items-center gap-2">
-          <Users className="size-6" />
-          <span className="font-medium hidden lg:block">Contacts</span>
-        </div>
-        {/* TODO: Online filter toggle */}
-        <div className="mt-3 hidden lg:flex items-center gap-2">
-          <label className="cursor-pointer flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showOnlineOnly}
-              onChange={(e) => setShowOnlineOnly(e.target.checked)}
-              className="checkbox checkbox-sm"
-            />
-            <span className="text-sm">Show online only</span>
-          </label>
-          <span className="text-xs text-zinc-500">({onlineUsers.length} online)</span>
-        </div>
-        <button className="btn btn-primary btn-sm w-full mt-3 hidden lg:flex" onClick={() => setIsModalOpen(true)}>
-          <Plus size={16} /> Add Contact
-        </button>
-        <button
-          className="btn btn-circle btn-sm mt-3 lg:hidden"
-          onClick={() => setIsModalOpen(true)}
-          title="Add Contact"
-        >
-          <Plus size={18} />
-        </button>
-      </div>
-
-      <div className="overflow-y-auto w-full py-3">
-        {filteredUsers.map((user) => (
-          <div
-            key={user._id}
-            className={`
+  const sidebarBody = isUsersLoading ? (
+    <SidebarSkeleton />
+  ) : (
+    <>
+      {filteredUsers.map((user) => (
+        <div
+          key={user._id}
+          className={`
               w-full p-3 flex items-center gap-3 group
               hover:bg-base-300 transition-colors
               ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
             `}
-          >
-            <button className="flex items-center gap-3 flex-1" onClick={() => setSelectedUser(user)}>
-            <div className="relative mx-auto lg:mx-0">
+        >
+          <button className="flex items-center gap-3 flex-1" onClick={() => handleUserSelect(user)}>
+            <div className="relative">
               <img
                 src={user.profilePic || "/avatar.png"}
                 alt={user.name}
@@ -125,29 +113,69 @@ const Sidebar = () => {
               )}
             </div>
 
-            {/* User info - only visible on larger screens */}
-            <div className="hidden lg:block text-left min-w-0">
+            {/* User info */}
+            <div className="text-left min-w-0 flex-1">
               <div className="font-medium truncate">{user.fullName}</div>
               <div className="text-sm text-zinc-400">
                 {onlineUsers.includes(user._id) ? "Online" : "Offline"}
               </div>
             </div>
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
-              title="Remove Contact"
-              onClick={() => setContactToRemove(user)}
-            >
-              <UserMinus size={16} />
-            </button>
-          </div>
-        ))}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+            title="Remove Contact"
+            onClick={() => setContactToRemove(user)}
+          >
+            <UserMinus size={16} />
+          </button>
+        </div>
+      ))}
 
-        {filteredUsers.length === 0 && (
-          <div className="text-center text-zinc-500 py-4">No contacts</div>
-        )}
+      {filteredUsers.length === 0 && (
+        <div className="text-center text-zinc-500 py-4">No contacts</div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 bg-black/50 transition-opacity duration-200 z-30 lg:hidden ${
+          isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        className={`bg-base-100 h-full w-64 lg:w-72 border-r border-base-300 flex flex-col transition-transform duration-300
+        absolute inset-y-0 left-0 z-40 shadow-2xl lg:shadow-none lg:static lg:translate-x-0 lg:flex-shrink-0
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+      <div className="border-b border-base-300 w-full p-5">
+        <div className="flex items-center gap-2">
+          <Users className="size-6" />
+          <span className="font-medium">Contacts</span>
+        </div>
+        {/* TODO: Online filter toggle */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <label className="cursor-pointer flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showOnlineOnly}
+              onChange={(e) => setShowOnlineOnly(e.target.checked)}
+              className="checkbox checkbox-sm"
+            />
+            <span className="text-sm">Show online only</span>
+          </label>
+          <span className="text-xs text-zinc-500">({onlineUsers.length} online)</span>
+        </div>
+        <button className="btn btn-primary btn-sm w-full mt-3" onClick={() => setIsModalOpen(true)}>
+          <Plus size={16} /> Add Contact
+        </button>
       </div>
+
+      <div className="overflow-y-auto w-full py-3 flex-1">{sidebarBody}</div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
@@ -227,7 +255,8 @@ const Sidebar = () => {
           </div>
         </div>
       )}
-    </aside>
+      </aside>
+    </>
   );
 };
 export default Sidebar;

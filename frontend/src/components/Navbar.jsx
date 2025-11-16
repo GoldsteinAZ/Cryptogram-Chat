@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, Settings, User } from "lucide-react";
+import { useChatStore } from "../store/useChatStore";
+import { LogOut, Settings, User, Menu, PanelLeftClose } from "lucide-react";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
+  const { toggleSidebar, isSidebarOpen } = useChatStore();
 
   return (
     <header
@@ -12,7 +14,17 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4 h-16">
         <div className="flex items-center justify-between h-full">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4">
+            {authUser && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm lg:hidden"
+                onClick={toggleSidebar}
+                aria-label={isSidebarOpen ? "Hide contacts" : "Show contacts"}
+              >
+                {isSidebarOpen ? <PanelLeftClose className="size-5" /> : <Menu className="size-5" />}
+              </button>
+            )}
             <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-all">
               <img src="/favicon1.png" alt="Cryptogram logo" className="w-8 h-8 object-contain" />
               <h1 className="text-lg font-bold">Cryptogram</h1>
@@ -21,7 +33,7 @@ const Navbar = () => {
 
           <div className="flex items-center gap-3">
             {authUser && (
-              <div className="hidden sm:flex flex-col text-right">
+              <div className="flex flex-col text-right text-xs sm:text-sm">
                 <span className="text-[10px] uppercase tracking-wide text-zinc-500">
                   Logged in as
                 </span>
