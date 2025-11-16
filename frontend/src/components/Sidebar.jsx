@@ -43,6 +43,30 @@ const Sidebar = () => {
   }, [setSidebarOpen]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (!isSidebarOpen) return;
+
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+
+    const syncScrollLock = () => {
+      if (window.innerWidth < 1024) {
+        body.style.overflow = "hidden";
+      } else {
+        body.style.overflow = previousOverflow;
+      }
+    };
+
+    syncScrollLock();
+    window.addEventListener("resize", syncScrollLock);
+
+    return () => {
+      window.removeEventListener("resize", syncScrollLock);
+      body.style.overflow = previousOverflow;
+    };
+  }, [isSidebarOpen]);
+
+  useEffect(() => {
     if (!socket) return;
     socket.on("newMessage", handleIncomingMessage);
     socket.on("messageDeleted", handleMessageDeleted);
@@ -141,18 +165,18 @@ const Sidebar = () => {
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black/50 transition-opacity duration-200 z-30 lg:hidden ${
+        className={`fixed inset-x-0 top-16 bottom-0 bg-black/50 transition-opacity duration-200 z-30 lg:hidden ${
           isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={() => setSidebarOpen(false)}
         aria-hidden="true"
       />
       <aside
-        className={`bg-base-100 h-full w-64 lg:w-72 border-r border-base-300 flex flex-col transition-transform duration-300
-        absolute inset-y-0 left-0 z-40 shadow-2xl lg:shadow-none lg:static lg:translate-x-0 lg:flex-shrink-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`bg-base-100 border-r border-base-300 flex flex-col overflow-hidden transition-transform duration-300
+        fixed top-16 bottom-0 left-0 z-40 w-64 shadow-2xl lg:shadow-none lg:static lg:top-auto lg:bottom-auto lg:h-full lg:w-72 lg:flex-shrink-0
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
       >
-      <div className="border-b border-base-300 w-full p-5">
+      <div className="border-b border-base-300 w-full p-5 shrink-0 bg-base-100">
         <div className="flex items-center gap-2">
           <Users className="size-6" />
           <span className="font-medium">Contacts</span>
@@ -175,7 +199,7 @@ const Sidebar = () => {
         </button>
       </div>
 
-      <div className="overflow-y-auto w-full py-3 flex-1">{sidebarBody}</div>
+      <div className="overflow-y-auto w-full py-3 flex-1 overscroll-contain">{sidebarBody}</div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">

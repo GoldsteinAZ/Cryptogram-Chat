@@ -33,7 +33,7 @@ const Navbar = () => {
 
           <div className="flex items-center gap-3">
             {authUser && (
-              <div className="flex flex-col text-right text-xs sm:text-sm">
+              <div className="hidden sm:flex flex-col text-right">
                 <span className="text-[10px] uppercase tracking-wide text-zinc-500">
                   Logged in as
                 </span>
